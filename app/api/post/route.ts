@@ -1,33 +1,32 @@
 import { NextResponse } from "next/server";
+import { TwitterApi } from "twitter-api-v2";
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
     try {
-        const { text } = await request.json();
-
-        // Validation
-        if (!text || typeof text !== "string" || text.trim() === "") {
-            return NextResponse.json(
-                { ok: false, message: "テキストが空です" },
-                { status: 400 }
-            );
+        const { text } = await req.json();
+        if (!text) {
+            return NextResponse.json({ error: "text is required" }, { status: 400 });
         }
 
-        if (text.length > 280) {
-            return NextResponse.json(
-                { ok: false, message: "280文字を超えています" },
-                { status: 400 }
-            );
-        }
+        // X API クライアント作成
+        const client = new TwitterApi({
+            appKey: process.env.TWITTER_API_KEY!,
+            appSecret: process.env.TWITTER_API_SECRET!,
+            accessToken: process.env.TWITTER_ACCESS_TOKEN!,
+            accessSecret: process.env.TWITTER_ACCESS_SECRET!,
+        });
 
-        // Log to server console
-        console.log("Xに投稿（予定）:", text);
+        // ツイート投稿
+        const tweet = await client.v2.tweet(text);
 
-        return NextResponse.json({ ok: true });
-    } catch (error) {
-        console.error("API Error:", error);
-        return NextResponse.json(
-            { ok: false, message: "サーバーエラーです" },
-            { status: 500 }
-        );
+        return NextResponse.json({
+            success: true,
+            tweetId: tweet.data.id,
+            text,
+        });
+
+    } catch (e: any) {
+        console.error("X API ERROR:", e);
+        return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }

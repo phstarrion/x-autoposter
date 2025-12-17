@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { PostResponse } from "../types/api";
+import { PostResponse, ScheduledPost } from "../types/api";
 
 type RecentPost = {
   text: string;
@@ -15,6 +15,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PostResponse | null>(null);
   const [recentPost, setRecentPost] = useState<RecentPost | null>(null);
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const MAX_CHARS = 280;
@@ -22,6 +24,27 @@ export default function Home() {
   const isOverLimit = charCount > MAX_CHARS;
   const isEmpty = charCount === 0;
   const isNearLimit = charCount > MAX_CHARS * 0.9;
+
+  // Fetch scheduled posts
+  const fetchScheduledPosts = useCallback(async () => {
+    setLoadingPosts(true);
+    try {
+      const res = await fetch("/api/scheduled-posts");
+      const data = await res.json();
+      if (data.success) {
+        setScheduledPosts(data.posts);
+      }
+    } catch (error) {
+      console.error("Failed to fetch scheduled posts:", error);
+    } finally {
+      setLoadingPosts(false);
+    }
+  }, []);
+
+  // Load scheduled posts on mount
+  useEffect(() => {
+    fetchScheduledPosts();
+  }, [fetchScheduledPosts]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -74,6 +97,10 @@ export default function Home() {
         });
         setText("");
         setScheduledAt("");
+        // Refresh the scheduled posts list
+        if (isScheduling) {
+          fetchScheduledPosts();
+        }
       } else {
         setResult(data);
       }
@@ -82,18 +109,80 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [text, scheduledAt, isEmpty, isOverLimit, loading]);
+  }, [text, scheduledAt, isEmpty, isOverLimit, loading, fetchScheduledPosts]);
+
+  const handleDeleteScheduledPost = useCallback(async (id: number) => {
+    if (!confirm("この予約投稿を削除しますか？")) return;
+
+    try {
+      const res = await fetch("/api/scheduled-posts", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setScheduledPosts((prev) => prev.filter((post) => post.id !== id));
+      } else {
+        alert("削除に失敗しました");
+      }
+    } catch (error) {
+      alert("削除に失敗しました");
+    }
+  }, []);
+
+  // Format date for display
+  const formatScheduledDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Get status badge color
+  const getStatusBadge = (status: ScheduledPost["status"]) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "sent":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "failed":
+        return "bg-red-100 text-red-800 border-red-200";
+    }
+  };
+
+  // Get status label
+  const getStatusLabel = (status: ScheduledPost["status"]) => {
+    switch (status) {
+      case "pending":
+        return "予約中";
+      case "sent":
+        return "投稿済み";
+      case "failed":
+        return "失敗";
+    }
+  };
 
   // Calculate min datetime for input (now)
   const minDateTime = new Date().toISOString().slice(0, 16);
 
+  // Filter pending posts
+  const pendingPosts = scheduledPosts.filter((p) => p.status === "pending");
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-slate-100 text-slate-900 font-sans">
+    <main className="flex min-h-screen flex-col items-center justify-start p-4 bg-slate-100 text-slate-900 font-sans pt-8">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="bg-slate-900 p-6 text-center">
           <h1 className="text-xl font-bold text-white tracking-wide">
-            X Autoposter <span className="text-slate-400 text-sm font-normal">v0.2</span>
+            X Autoposter <span className="text-slate-400 text-sm font-normal">v0.3</span>
           </h1>
         </div>
 
@@ -215,6 +304,78 @@ export default function Home() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Scheduled Posts List */}
+      <div className="w-full max-w-lg mt-6 bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+        <div className="bg-indigo-900 p-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">
+            📅 予約投稿一覧
+            {pendingPosts.length > 0 && (
+              <span className="ml-2 bg-indigo-700 text-indigo-100 text-sm px-2 py-0.5 rounded-full">
+                {pendingPosts.length}
+              </span>
+            )}
+          </h2>
+          <button
+            onClick={fetchScheduledPosts}
+            disabled={loadingPosts}
+            className="text-indigo-200 hover:text-white transition-colors text-sm flex items-center gap-1"
+          >
+            {loadingPosts ? (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              "🔄 更新"
+            )}
+          </button>
+        </div>
+
+        <div className="p-4">
+          {loadingPosts && scheduledPosts.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              <p>読み込み中...</p>
+            </div>
+          ) : scheduledPosts.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              <p>予約投稿はありません</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {scheduledPosts.map((post) => (
+                <div
+                  key={post.id}
+                  className="bg-slate-50 p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-slate-700 text-sm flex-1 whitespace-pre-wrap">
+                      {post.text}
+                    </p>
+                    {post.status === "pending" && (
+                      <button
+                        onClick={() => handleDeleteScheduledPost(post.id)}
+                        className="text-red-400 hover:text-red-600 transition-colors text-xs shrink-0"
+                        title="削除"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
+                    <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getStatusBadge(post.status)}`}>
+                      {getStatusLabel(post.status)}
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">
+                      {formatScheduledDate(post.scheduled_at)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

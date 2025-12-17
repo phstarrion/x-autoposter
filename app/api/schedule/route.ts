@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase";
 import { PostResponse } from "../../../types/api";
 
+// Shared mock store - using a simple approach
+const getBaseUrl = () => {
+    return process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000";
+};
+
 export async function POST(req: Request) {
     try {
         const { text, scheduledAt } = await req.json();
@@ -20,10 +27,22 @@ export async function POST(req: Request) {
             );
         }
 
-        // Mock Mode: Simulate scheduling
+        // Mock Mode: Add to mock store via internal API
         if (process.env.MOCK_MODE === "true") {
-            console.log("★ MOCK MODE: Scheduled post:", text, "at", scheduledAt);
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            console.log("★ MOCK MODE: Scheduling post:", text, "at", scheduledAt);
+
+            // Call the scheduled-posts API to add to the store
+            const baseUrl = getBaseUrl();
+            const response = await fetch(`${baseUrl}/api/scheduled-posts`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text, scheduledAt }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to add to mock store");
+            }
+
             return NextResponse.json({
                 success: true,
                 tweetId: "mock-scheduled-id-" + Date.now(),
@@ -39,9 +58,13 @@ export async function POST(req: Request) {
             );
         }
 
+        // Convert local datetime to ISO string for proper timezone handling
+        const scheduledDate = new Date(scheduledAt);
+        const isoScheduledAt = scheduledDate.toISOString();
+
         const { error } = await supabase.from("scheduled_posts").insert({
             text,
-            scheduled_at: scheduledAt,
+            scheduled_at: isoScheduledAt,
             status: "pending",
         });
 

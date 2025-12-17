@@ -1,0 +1,19 @@
+name: Scheduled Posts Cron
+
+on:
+  schedule:
+    # Every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  trigger-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Cron API
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/cron" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}

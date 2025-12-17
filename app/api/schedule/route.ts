@@ -58,13 +58,11 @@ export async function POST(req: Request) {
             );
         }
 
-        // Convert local datetime to ISO string for proper timezone handling
-        const scheduledDate = new Date(scheduledAt);
-        const isoScheduledAt = scheduledDate.toISOString();
-
+        // The frontend now sends ISO string with proper timezone
+        // Just use it directly
         const { error } = await supabase.from("scheduled_posts").insert({
             text,
-            scheduled_at: isoScheduledAt,
+            scheduled_at: scheduledAt,
             status: "pending",
         });
 

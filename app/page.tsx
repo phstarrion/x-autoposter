@@ -73,7 +73,9 @@ export default function Home() {
 
     const isScheduling = !!scheduledAt;
     const endpoint = isScheduling ? "/api/schedule" : "/api/post";
-    const body = isScheduling ? { text, scheduledAt } : { text };
+    // Convert local datetime to ISO string before sending
+    const scheduledAtISO = isScheduling ? new Date(scheduledAt).toISOString() : null;
+    const body = isScheduling ? { text, scheduledAt: scheduledAtISO } : { text };
 
     try {
       const res = await fetch(endpoint, {

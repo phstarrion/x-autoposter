@@ -15,6 +15,11 @@ type Draft = {
     created_at: string;
 };
 
+type ApiResponse = {
+    draft: Draft | null;
+    error?: string;
+};
+
 export default function DraftsPage() {
     const [draft, setDraft] = useState<Draft | null>(null);
     const [loading, setLoading] = useState(true);
@@ -24,14 +29,17 @@ export default function DraftsPage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch("/api/drafts/latest");
-            const data = await res.json();
-            if (data.success) {
+            const res = await fetch("/api/drafts/latest", {
+                cache: "no-store",
+            });
+            const data: ApiResponse = await res.json();
+
+            if (res.ok) {
                 setDraft(data.draft);
             } else {
                 setError(data.error || "下書きの取得に失敗しました");
             }
-        } catch (err) {
+        } catch {
             setError("通信エラーが発生しました");
         } finally {
             setLoading(false);

@@ -18,11 +18,15 @@ function getSupabaseClient() {
 type ReorderItem = {
     id: number;
     sort_order: number;
+    scheduled_at?: string; // Optional: swap times when provided
 };
 
 /**
- * POST: 予約投稿の並び順を更新
- * Body: { items: [{ id: number, sort_order: number }] }
+ * POST: 予約投稿の並び順と予約時間を更新
+ * Body: { items: [{ id: number, sort_order: number, scheduled_at?: string }] }
+ * 
+ * When scheduled_at is provided, it will update the scheduled time as well.
+ * This allows swapping times when reordering posts.
  */
 export async function POST(req: Request) {
     const supabase = getSupabaseClient();
@@ -44,14 +48,22 @@ export async function POST(req: Request) {
             );
         }
 
-        // Update each item's sort_order
-        // Using Promise.all for parallel updates
-        const updates = items.map(item =>
-            supabase
+        // Update each item's sort_order and optionally scheduled_at
+        const updates = items.map(item => {
+            const updateData: { sort_order: number; scheduled_at?: string } = {
+                sort_order: item.sort_order,
+            };
+
+            // Include scheduled_at if provided (for time swapping)
+            if (item.scheduled_at) {
+                updateData.scheduled_at = item.scheduled_at;
+            }
+
+            return supabase
                 .from("scheduled_posts")
-                .update({ sort_order: item.sort_order })
-                .eq("id", item.id)
-        );
+                .update(updateData)
+                .eq("id", item.id);
+        });
 
         const results = await Promise.all(updates);
 

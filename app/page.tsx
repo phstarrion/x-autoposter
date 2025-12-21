@@ -172,14 +172,25 @@ export default function Home() {
 
     if (oldIndex === -1 || newIndex === -1) return;
 
-    // Optimistic update
-    const newPosts = arrayMove(scheduledPosts, oldIndex, newIndex);
+    // Swap scheduled_at times between the two posts
+    const oldPost = scheduledPosts[oldIndex];
+    const newPost = scheduledPosts[newIndex];
+    const tempScheduledAt = oldPost.scheduled_at;
+
+    // Create updated posts with swapped times
+    const updatedPosts = [...scheduledPosts];
+    updatedPosts[oldIndex] = { ...oldPost, scheduled_at: newPost.scheduled_at };
+    updatedPosts[newIndex] = { ...newPost, scheduled_at: tempScheduledAt };
+
+    // Optimistic update with swapped times
+    const newPosts = arrayMove(updatedPosts, oldIndex, newIndex);
     setScheduledPosts(newPosts);
 
-    // Calculate new sort_order values (1000 increment)
+    // Calculate new sort_order values and include swapped scheduled_at
     const items = newPosts.map((post, index) => ({
       id: post.id,
       sort_order: (index + 1) * 1000,
+      scheduled_at: post.scheduled_at,
     }));
 
     // Save to API

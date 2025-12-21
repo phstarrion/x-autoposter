@@ -18,4 +18,5 @@ export type ScheduledPost = {
     status: 'pending' | 'sent' | 'failed';
     tweet_id?: string;
     created_at: string;
+    sort_order?: number;
 };

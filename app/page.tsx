@@ -2,7 +2,25 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { PostResponse, ScheduledPost } from "../types/api";
+import { getNextSlot } from "../lib/schedule";
 
 type RecentPost = {
   text: string;
@@ -10,9 +28,91 @@ type RecentPost = {
   type: "posted" | "scheduled";
 };
 
+// Sortable item component for D&D
+function SortablePostItem({
+  post,
+  onEdit,
+  onDelete,
+  formatDate,
+  getStatusBadge,
+  getStatusLabel,
+}: {
+  post: ScheduledPost;
+  onEdit: (post: ScheduledPost) => void;
+  onDelete: (id: number) => void;
+  formatDate: (date: string) => string;
+  getStatusBadge: (status: ScheduledPost["status"]) => string;
+  getStatusLabel: (status: ScheduledPost["status"]) => string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: post.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-slate-50 p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-3">
+        {post.status === "pending" && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 shrink-0 touch-none"
+            title="ドラッグで並び替え"
+          >
+            ⋮⋮
+          </button>
+        )}
+        <p className="text-slate-700 text-sm flex-1 whitespace-pre-wrap">
+          {post.text}
+        </p>
+        {post.status === "pending" && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => onEdit(post)}
+              className="text-blue-400 hover:text-blue-600 transition-colors text-xs"
+              title="編集"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={() => onDelete(post.id)}
+              className="text-red-400 hover:text-red-600 transition-colors text-xs"
+              title="削除"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
+        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getStatusBadge(post.status)}`}>
+          {getStatusLabel(post.status)}
+        </span>
+        <span className="text-xs text-slate-400 font-mono">
+          {formatDate(post.scheduled_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [text, setText] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduledAt, setScheduledAt] = useState(() => getNextSlot());
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PostResponse | null>(null);
   const [recentPost, setRecentPost] = useState<RecentPost | null>(null);
@@ -31,6 +131,14 @@ export default function Home() {
   const [editText, setEditText] = useState("");
   const [editScheduledAt, setEditScheduledAt] = useState("");
   const [editLoading, setEditLoading] = useState(false);
+
+  // D&D sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Fetch scheduled posts
   const fetchScheduledPosts = useCallback(async () => {
@@ -52,6 +160,47 @@ export default function Home() {
   useEffect(() => {
     fetchScheduledPosts();
   }, [fetchScheduledPosts]);
+
+  // Handle D&D reorder
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = scheduledPosts.findIndex((p) => p.id === active.id);
+    const newIndex = scheduledPosts.findIndex((p) => p.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Optimistic update
+    const newPosts = arrayMove(scheduledPosts, oldIndex, newIndex);
+    setScheduledPosts(newPosts);
+
+    // Calculate new sort_order values (1000 increment)
+    const items = newPosts.map((post, index) => ({
+      id: post.id,
+      sort_order: (index + 1) * 1000,
+    }));
+
+    // Save to API
+    try {
+      const res = await fetch("/api/scheduled-posts/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await res.json();
+      if (!data.ok) {
+        console.error("Reorder failed:", data.error);
+        // Revert on failure
+        fetchScheduledPosts();
+      }
+    } catch (error) {
+      console.error("Reorder error:", error);
+      fetchScheduledPosts();
+    }
+  }, [scheduledPosts, fetchScheduledPosts]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -434,46 +583,30 @@ export default function Home() {
               <p>予約投稿はありません</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {scheduledPosts.map((post) => (
-                <div
-                  key={post.id}
-                  className="bg-slate-50 p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-slate-700 text-sm flex-1 whitespace-pre-wrap">
-                      {post.text}
-                    </p>
-                    {post.status === "pending" && (
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleStartEditing(post)}
-                          className="text-blue-400 hover:text-blue-600 transition-colors text-xs"
-                          title="編集"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => handleDeleteScheduledPost(post.id)}
-                          className="text-red-400 hover:text-red-600 transition-colors text-xs"
-                          title="削除"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
-                    <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getStatusBadge(post.status)}`}>
-                      {getStatusLabel(post.status)}
-                    </span>
-                    <span className="text-xs text-slate-400 font-mono">
-                      {formatScheduledDate(post.scheduled_at)}
-                    </span>
-                  </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={scheduledPosts.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3">
+                  {scheduledPosts.map((post) => (
+                    <SortablePostItem
+                      key={post.id}
+                      post={post}
+                      onEdit={handleStartEditing}
+                      onDelete={handleDeleteScheduledPost}
+                      formatDate={formatScheduledDate}
+                      getStatusBadge={getStatusBadge}
+                      getStatusLabel={getStatusLabel}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>

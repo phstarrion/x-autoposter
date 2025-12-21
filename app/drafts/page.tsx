@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getNextSlot } from "../../lib/schedule";
 
 type Draft = {
     id: string;
@@ -79,7 +80,7 @@ export default function DraftsPage() {
     // Open schedule modal
     const handleOpenScheduleModal = useCallback((draft: Draft) => {
         setSchedulingDraft(draft);
-        setScheduledAt("");
+        setScheduledAt(getNextSlot());
     }, []);
 
     // Close schedule modal
@@ -320,8 +321,8 @@ export default function DraftsPage() {
                                     onClick={handleSchedule}
                                     disabled={scheduleLoading || !scheduledAt}
                                     className={`flex-1 py-3 rounded-xl font-bold transition-all ${scheduleLoading || !scheduledAt
-                                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                                            : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg"
+                                        ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                        : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg"
                                         }`}
                                 >
                                     {scheduleLoading ? (

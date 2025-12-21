@@ -64,6 +64,7 @@ export async function POST(req: Request) {
             text,
             scheduled_at: scheduledAt,
             status: "pending",
+            sort_order: Date.now(),
         });
 
         if (error) {

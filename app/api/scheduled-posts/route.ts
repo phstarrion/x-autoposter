@@ -24,6 +24,7 @@ export async function GET() {
         const { data: posts, error } = await supabase
             .from("scheduled_posts")
             .select("*")
+            .order("sort_order", { ascending: true, nullsFirst: false })
             .order("scheduled_at", { ascending: true });
 
         if (error) throw error;

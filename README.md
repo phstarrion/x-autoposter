@@ -1,37 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# X Autoposter
 
-## Getting Started
+X (Twitter) への自動投稿・予約投稿ツール。AIエージェントによる投稿文生成機能付き。
 
-First, run the development server:
+## 機能
+
+- 📝 即時投稿
+- 📅 予約投稿（スケジュール機能）
+- ✏️ 予約投稿の編集・削除
+- 🤖 AIエージェントによる投稿文生成
+
+## セットアップ
+
+```bash
+npm install
+```
+
+### 環境変数
+
+`.env.local` に以下を設定:
+
+```
+# X (Twitter) API
+TWITTER_API_KEY=your_api_key
+TWITTER_API_SECRET=your_api_secret
+TWITTER_ACCESS_TOKEN=your_access_token
+TWITTER_ACCESS_SECRET=your_access_secret
+
+# Supabase
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# OpenAI (AIエージェント用)
+OPENAI_API_KEY=your_openai_api_key
+```
+
+## 開発
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+[http://localhost:3000](http://localhost:3000) でアクセス。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🤖 AIエージェント投稿生成
 
-## Learn More
+複数のAIエージェントが連携して、投稿文を自動生成します。
 
-To learn more about Next.js, take a look at the following resources:
+### アーキテクチャ
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+inputs/*.md → [Planner] → [Writer] → [Checker] → outputs/final_*.txt
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| エージェント | 役割 |
+|------------|------|
+| **Planner** | 入力を分析し、投稿案を複数提案 |
+| **Writer** | 提案を洗練し、魅力的な文章に |
+| **Checker** | 文字数・誤字・適切さを最終確認 |
 
-## Deploy on Vercel
+### 使い方
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **入力ファイルを作成**
+   ```bash
+   # inputs/ に .md ファイルを作成
+   echo "# 今日の話題\nAIについて投稿したい" > inputs/my_memo.md
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **エージェントを実行**
+   ```bash
+   ./run_agents.sh
+   ```
 
+3. **出力を確認**
+   ```
+   outputs/
+   ├── planner_YYYYMMDD-HHMMSS.json   # プランナー出力
+   ├── writer_YYYYMMDD-HHMMSS.json    # ライター出力
+   ├── checked_YYYYMMDD-HHMMSS.json   # チェッカー出力
+   └── final_YYYYMMDD-HHMMSS.txt      # 最終投稿テキスト
+   
+   logs/
+   └── run_YYYYMMDD-HHMMSS.log        # 実行ログ
+   ```
+
+### ポリシー設定
+
+`policies/` にMarkdownファイルを置くと、全エージェントのプロンプトに追加されます。
+
+```bash
+# 例: ブランドガイドライン
+echo "# Brand Policy\n- 絵文字を多用する\n- カジュアルなトーン" > policies/brand.md
+```
+
+### エージェントのカスタマイズ
+
+`agents/` のMarkdownファイルを編集:
+
+- `planner.md` - 計画・提案のルール
+- `writer.md` - 文章作成のルール
+- `checker.md` - チェック項目
+
+### LLMプロバイダー
+
+デフォルトは OpenAI (`gpt-4o-mini`)。
+
+```bash
+# 環境変数でモデル変更も可能（将来対応）
+LLM_PROVIDER=openai  # 現在はopenaiのみ
+```
+
+---
+
+## デプロイ
+
+Vercel へのデプロイ:
+
+```bash
+git push origin main
+```
+
+Vercel が自動でデプロイを実行します。

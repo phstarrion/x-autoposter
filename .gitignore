@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent outputs (keep .gitkeep)
+/outputs/*.json
+/outputs/*.txt
+/logs/*.log

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import Link from "next/link";
 import { PostResponse, ScheduledPost } from "../types/api";
 
 type RecentPost = {
@@ -259,12 +260,20 @@ export default function Home() {
       {/* Main Card */}
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 animate-slide-up">
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-5 sm:p-6 text-center">
-          <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide flex items-center justify-center gap-2">
-            <span className="text-2xl">𝕏</span>
-            <span>Autoposter</span>
-            <span className="text-slate-400 text-xs sm:text-sm font-normal ml-1">v0.4</span>
-          </h1>
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide flex items-center gap-2">
+              <span className="text-2xl">𝕏</span>
+              <span>Autoposter</span>
+              <span className="text-slate-400 text-xs sm:text-sm font-normal ml-1">v0.4</span>
+            </h1>
+            <Link
+              href="/drafts"
+              className="text-slate-300 hover:text-white text-sm flex items-center gap-1 transition-colors"
+            >
+              📝 下書き
+            </Link>
+          </div>
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">

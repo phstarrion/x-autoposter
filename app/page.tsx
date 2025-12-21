@@ -19,11 +19,16 @@ export default function Home() {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const MAX_CHARS = 280;
-  const charCount = text.length;
+  const [charCount, setCharCount] = useState(0);
   const isOverLimit = charCount > MAX_CHARS;
   const isEmpty = charCount === 0;
   const isNearLimit = charCount > MAX_CHARS * 0.9;
+
+  // Edit modal state
+  const [editingPost, setEditingPost] = useState<ScheduledPost | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editScheduledAt, setEditScheduledAt] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
 
   // Fetch scheduled posts
   const fetchScheduledPosts = useCallback(async () => {

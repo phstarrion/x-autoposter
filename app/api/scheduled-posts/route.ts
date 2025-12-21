@@ -77,6 +77,95 @@ export async function POST(req: Request) {
     }
 }
 
+// PUT: 予約投稿を編集
+export async function PUT(req: Request) {
+    try {
+        const { id, text, scheduledAt } = await req.json();
+
+        if (!id) {
+            return NextResponse.json(
+                { success: false, error: "id is required" },
+                { status: 400 }
+            );
+        }
+
+        if (!text && !scheduledAt) {
+            return NextResponse.json(
+                { success: false, error: "text or scheduledAt is required" },
+                { status: 400 }
+            );
+        }
+
+        // バリデーション: 280文字制限
+        if (text && text.length > 280) {
+            return NextResponse.json(
+                { success: false, error: "テキストは280文字以内にしてください" },
+                { status: 400 }
+            );
+        }
+
+        // バリデーション: 予約日時が過去でないか
+        if (scheduledAt && new Date(scheduledAt) <= new Date()) {
+            return NextResponse.json(
+                { success: false, error: "予約日時は未来の日時を指定してください" },
+                { status: 400 }
+            );
+        }
+
+        // Mock Mode
+        if (process.env.MOCK_MODE === "true") {
+            const post = mockPostsStore.find(p => p.id === id);
+            if (post && post.status === "pending") {
+                if (text) post.text = text;
+                if (scheduledAt) post.scheduled_at = new Date(scheduledAt).toISOString();
+                console.log("★ MOCK MODE: Updated scheduled post:", post);
+                return NextResponse.json({ success: true, post });
+            }
+            return NextResponse.json(
+                { success: false, error: "投稿が見つかりません" },
+                { status: 404 }
+            );
+        }
+
+        if (!supabase) {
+            return NextResponse.json(
+                { success: false, error: "Database not configured" },
+                { status: 500 }
+            );
+        }
+
+        // 更新データを構築
+        const updateData: { text?: string; scheduled_at?: string } = {};
+        if (text) updateData.text = text;
+        if (scheduledAt) updateData.scheduled_at = scheduledAt;
+
+        const { data, error } = await supabase
+            .from("scheduled_posts")
+            .update(updateData)
+            .eq("id", id)
+            .eq("status", "pending")
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        if (!data) {
+            return NextResponse.json(
+                { success: false, error: "投稿が見つかりません" },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json({ success: true, post: data });
+    } catch (e: any) {
+        console.error("Update Scheduled Post Error:", e);
+        return NextResponse.json(
+            { success: false, error: "予約投稿の更新に失敗しました" },
+            { status: 500 }
+        );
+    }
+}
+
 // DELETE: 予約投稿を削除
 export async function DELETE(req: Request) {
     try {

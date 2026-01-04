@@ -38,14 +38,18 @@ export async function GET() {
             throw error;
         }
 
+        console.log(`API/Drafts: Found ${data?.length || 0} drafts`);
+
         return NextResponse.json({
             drafts: data || [],
         });
-    } catch (e: unknown) {
+    } catch (e: any) {
         console.error("Fetch Drafts Error:", e);
-        const message = e instanceof Error ? e.message : "Unknown error";
+        // Supabase error object has 'message', standard Error has 'message'
+        const message = e?.message || (typeof e === 'string' ? e : "Unknown error");
+        const details = e?.details ? ` (${e.details})` : "";
         return NextResponse.json(
-            { error: `下書きの取得に失敗しました: ${message}` },
+            { error: `下書きの取得に失敗しました: ${message}${details}` },
             { status: 500 }
         );
     }

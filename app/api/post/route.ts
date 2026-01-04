@@ -62,11 +62,18 @@ export async function POST(req: Request) {
                     // Infer mime type from URL extension if possible
                     // simple heuristic
                     const ext = m.url.split('.').pop()?.split('?')[0];
+                    const mimeType = m.type === 'video'
+                        ? 'video/mp4'
+                        : ext === 'png'
+                            ? 'image/png'
+                            : ext === 'webp'
+                                ? 'image/webp'
+                                : 'image/jpeg';
 
                     // Upload media
                     // ensure we use the v1 API for upload as currently v2 upload is limited or just use convenience wrapper
                     // client.v1.uploadMedia handles it.
-                    const mediaId = await client.v1.uploadMedia(buffer, { mimeType: m.type === 'video' ? 'video/mp4' : undefined });
+                    const mediaId = await client.v1.uploadMedia(buffer, { mimeType });
                     return mediaId;
                 } catch (e) {
                     console.error("Failed to upload media item:", e);

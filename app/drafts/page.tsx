@@ -3,18 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { getNextSlot } from "../../lib/schedule";
-
-type Draft = {
-    id: string;
-    text: string;
-    source: string;
-    meta: {
-        char_count?: number;
-        ready_to_post?: boolean;
-        checks?: Record<string, { passed: boolean; note: string }>;
-    } | null;
-    created_at: string;
-};
+import { Draft } from "../../types/api";
 
 type ApiResponse = {
     drafts?: Draft[];
@@ -103,6 +92,7 @@ export default function DraftsPage() {
                 body: JSON.stringify({
                     text: schedulingDraft.text,
                     scheduledAt: scheduledAtISO,
+                    media: schedulingDraft.media
                 }),
             });
 
@@ -220,6 +210,21 @@ export default function DraftsPage() {
                                         {draft.text}
                                     </p>
 
+                                    {/* Media Info */}
+                                    {draft.media && draft.media.length > 0 && (
+                                        <div className="flex gap-2 mt-3">
+                                            {draft.media.map((m, i) => (
+                                                <div key={i} className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                                                    {m.type === 'image' ? (
+                                                        <img src={m.url} alt="" className="w-full h-full object-cover text-xs text-slate-400" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-slate-200 text-lg">🎥</div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     {/* Meta Info */}
                                     <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-3">
                                         <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">
@@ -290,6 +295,19 @@ export default function DraftsPage() {
                                     <p className="text-slate-700 whitespace-pre-wrap text-sm">
                                         {schedulingDraft.text}
                                     </p>
+                                    {schedulingDraft.media && schedulingDraft.media.length > 0 && (
+                                        <div className="flex gap-2 mt-3">
+                                            {schedulingDraft.media.map((m, i) => (
+                                                <div key={i} className="w-12 h-12 bg-slate-100 rounded overflow-hidden border border-slate-200">
+                                                    {m.type === 'image' ? (
+                                                        <img src={m.url} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-slate-200">🎥</div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

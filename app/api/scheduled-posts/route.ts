@@ -42,11 +42,18 @@ export async function GET() {
 // POST: 予約投稿を追加（モックモード用）
 export async function POST(req: Request) {
     try {
-        const { text, scheduledAt } = await req.json();
+        const { text, scheduledAt, media } = await req.json();
 
-        if (!text || !scheduledAt) {
+        if (!text && (!media || media.length === 0)) {
             return NextResponse.json(
-                { success: false, error: "text and scheduledAt are required" },
+                { success: false, error: "text or media is required" },
+                { status: 400 }
+            );
+        }
+
+        if (!scheduledAt) {
+            return NextResponse.json(
+                { success: false, error: "scheduledAt is required" },
                 { status: 400 }
             );
         }
@@ -59,6 +66,7 @@ export async function POST(req: Request) {
                 scheduled_at: new Date(scheduledAt).toISOString(),
                 status: "pending",
                 created_at: new Date().toISOString(),
+                media: media || []
             };
             mockPostsStore.push(newPost);
             console.log("★ MOCK MODE: Added scheduled post:", newPost);
@@ -81,7 +89,7 @@ export async function POST(req: Request) {
 // PUT: 予約投稿を編集
 export async function PUT(req: Request) {
     try {
-        const { id, text, scheduledAt } = await req.json();
+        const { id, text, scheduledAt, media } = await req.json();
 
         if (!id) {
             return NextResponse.json(
@@ -90,9 +98,9 @@ export async function PUT(req: Request) {
             );
         }
 
-        if (!text && !scheduledAt) {
+        if (!text && !scheduledAt && !media) {
             return NextResponse.json(
-                { success: false, error: "text or scheduledAt is required" },
+                { success: false, error: "No fields to update" },
                 { status: 400 }
             );
         }
@@ -117,8 +125,9 @@ export async function PUT(req: Request) {
         if (process.env.MOCK_MODE === "true") {
             const post = mockPostsStore.find(p => p.id === id);
             if (post && post.status === "pending") {
-                if (text) post.text = text;
+                if (text !== undefined) post.text = text;
                 if (scheduledAt) post.scheduled_at = new Date(scheduledAt).toISOString();
+                if (media) post.media = media;
                 console.log("★ MOCK MODE: Updated scheduled post:", post);
                 return NextResponse.json({ success: true, post });
             }
@@ -136,9 +145,10 @@ export async function PUT(req: Request) {
         }
 
         // 更新データを構築
-        const updateData: { text?: string; scheduled_at?: string } = {};
-        if (text) updateData.text = text;
+        const updateData: { text?: string; scheduled_at?: string; media?: any } = {};
+        if (text !== undefined) updateData.text = text;
         if (scheduledAt) updateData.scheduled_at = scheduledAt;
+        if (media) updateData.media = media;
 
         const { data, error } = await supabase
             .from("scheduled_posts")
@@ -170,6 +180,41 @@ export async function PUT(req: Request) {
 // DELETE: 予約投稿を削除
 export async function DELETE(req: Request) {
     try {
+        const url = new URL(req.url);
+        const action = url.searchParams.get("action");
+
+        // Handle clear history action
+        if (action === "clear_history") {
+            // Mock Mode
+            if (process.env.MOCK_MODE === "true") {
+                // Remove sent and failed posts
+                const initialLength = mockPostsStore.length;
+                const newStore = mockPostsStore.filter(p => p.status === "pending");
+                mockPostsStore.length = 0; // Clear array
+                mockPostsStore.push(...newStore); // Restore pending
+
+                console.log(`★ MOCK MODE: Cleared history. Removed ${initialLength - mockPostsStore.length} posts.`);
+                return NextResponse.json({ success: true });
+            }
+
+            if (!supabase) {
+                return NextResponse.json(
+                    { success: false, error: "Database not configured" },
+                    { status: 500 }
+                );
+            }
+
+            const { error } = await supabase
+                .from("scheduled_posts")
+                .delete()
+                .in("status", ["sent", "failed"]);
+
+            if (error) throw error;
+
+            return NextResponse.json({ success: true });
+        }
+
+        // Standard single delete
         const { id } = await req.json();
 
         if (!id) {
@@ -199,8 +244,10 @@ export async function DELETE(req: Request) {
         const { error } = await supabase
             .from("scheduled_posts")
             .delete()
-            .eq("id", id)
-            .eq("status", "pending");
+            .eq("id", id);
+        // Note: We allow deleting pending AND sent/failed items individually too, so no status check here or allow all.
+        // Previous code had .eq("status", "pending") which prevented deleting completed posts. 
+        // Let's remove that restriction so user can delete any post.
 
         if (error) throw error;
 

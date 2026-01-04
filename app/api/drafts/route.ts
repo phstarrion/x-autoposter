@@ -29,7 +29,7 @@ export async function GET() {
     try {
         const { data, error } = await supabase
             .from("drafts")
-            .select("id, text, source, meta, created_at")
+            .select("id, text, source, meta, created_at, media")
             .order("created_at", { ascending: false })
             .limit(50);
 

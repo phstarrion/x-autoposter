@@ -11,11 +11,11 @@ const getBaseUrl = () => {
 
 export async function POST(req: Request) {
     try {
-        const { text, scheduledAt } = await req.json();
+        const { text, scheduledAt, media } = await req.json();
 
-        if (!text) {
+        if (!text && (!media || media.length === 0)) {
             return NextResponse.json(
-                { success: false, error: "text is required" },
+                { success: false, error: "text or media is required" },
                 { status: 400 }
             );
         }
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
             const response = await fetch(`${baseUrl}/api/scheduled-posts`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, scheduledAt }),
+                body: JSON.stringify({ text, scheduledAt, media }),
             });
 
             if (!response.ok) {
@@ -65,6 +65,7 @@ export async function POST(req: Request) {
             scheduled_at: scheduledAt,
             status: "pending",
             sort_order: Date.now(),
+            media: media || []
         });
 
         if (error) {

@@ -65,54 +65,59 @@ function SortablePostItem({
       style={style}
       className="bg-slate-50 p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
         {post.status === "pending" && (
           <button
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 shrink-0 touch-none"
+            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 shrink-0 touch-none mt-1"
             title="ドラッグで並び替え"
           >
             ⋮⋮
           </button>
         )}
-        <p className="text-slate-700 text-sm flex-1 whitespace-pre-wrap">
-          {post.text}
-        </p>
 
-        {/* Media Thumbnails */}
-        {post.media && post.media.length > 0 && (
-          <div className="flex gap-1 shrink-0">
-            {post.media.map((m, i) => (
-              <div key={i} className="w-10 h-10 bg-slate-100 rounded overflow-hidden border border-slate-200">
-                {m.type === "image" ? (
-                  <img
-                    src={m.url}
-                    alt="attachment"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-200 text-xs">
-                    🎥
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-slate-700 text-sm whitespace-pre-wrap mb-2">
+            {post.text}
+          </p>
+
+          {/* Media Grid */}
+          {post.media && post.media.length > 0 && (
+            <div className={`grid gap-0.5 rounded-lg overflow-hidden border border-slate-200 mb-2 ${post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+              }`}>
+              {post.media.map((m, i) => (
+                <div key={i} className={`relative bg-slate-100 ${post.media && post.media.length === 1 ? 'aspect-video' : 'aspect-square'
+                  }`}>
+                  {m.type === "image" ? (
+                    <img
+                      src={m.url}
+                      alt="attachment"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-800 text-white">
+                      <span className="text-2xl">🎥</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {post.status === "pending" && (
-          <div className="flex items-center gap-2 shrink-0 ml-2">
+          <div className="flex flex-col gap-1 shrink-0 ml-1">
             <button
               onClick={() => onEdit(post)}
-              className="text-blue-400 hover:text-blue-600 transition-colors text-xs"
+              className="text-slate-400 hover:text-blue-500 transition-colors p-1"
               title="編集"
             >
               ✏️
             </button>
             <button
               onClick={() => onDelete(post.id)}
-              className="text-red-400 hover:text-red-600 transition-colors text-xs"
+              className="text-slate-400 hover:text-red-500 transition-colors p-1"
               title="削除"
             >
               ✕
@@ -120,8 +125,9 @@ function SortablePostItem({
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
-        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getStatusBadge(post.status)}`}>
+
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200">
+        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${getStatusBadge(post.status)}`}>
           {getStatusLabel(post.status)}
         </span>
         <span className="text-xs text-slate-400 font-mono">
@@ -147,29 +153,33 @@ function HistoryPostItem({
 }) {
   return (
     <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-200 text-slate-500">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm flex-1 whitespace-pre-wrap">{post.text}</p>
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm whitespace-pre-wrap mb-2">{post.text}</p>
 
-        {/* Media Thumbnails */}
-        {post.media && post.media.length > 0 && (
-          <div className="flex gap-1 shrink-0 opacity-75">
-            {post.media.map((m, i) => (
-              <div key={i} className="w-10 h-10 bg-slate-100 rounded overflow-hidden border border-slate-200">
-                {m.type === "image" ? (
-                  <img
-                    src={m.url}
-                    alt="attachment"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-200 text-xs">
-                    🎥
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+          {/* Media Grid */}
+          {post.media && post.media.length > 0 && (
+            <div className={`grid gap-0.5 rounded-lg overflow-hidden border border-slate-200 mb-2 opacity-75 ${post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+              }`}>
+              {post.media.map((m, i) => (
+                <div key={i} className={`relative bg-slate-100 ${post.media && post.media.length === 1 ? 'aspect-video' : 'aspect-square'
+                  }`}>
+                  {m.type === "image" ? (
+                    <img
+                      src={m.url}
+                      alt="attachment"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-800 text-white">
+                      <span className="text-2xl">🎥</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
         <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusBadge(post.status)} opacity-75`}>
@@ -545,7 +555,10 @@ export default function Home() {
   const minDateTime = new Date().toISOString().slice(0, 16);
 
   // Filter posts
-  const pendingPosts = scheduledPosts.filter((p) => p.status === "pending");
+  const pendingPosts = scheduledPosts
+    .filter((p) => p.status === "pending")
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
   const historyPosts = scheduledPosts.filter((p) => p.status !== "pending");
 
   // Format date for display

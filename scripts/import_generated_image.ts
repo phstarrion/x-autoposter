@@ -13,14 +13,8 @@ import { createClient } from '@supabase/supabase-js';
  * Import Generated Image Script
  * Usage: npm run import-image <path_to_json_file>
  * 
- * Directly saves x_caption from JSON as post text with image attachment.
+ * Uploads image to Supabase Storage and saves x_caption as draft.
  */
-
-const ROOT_DIR = path.resolve(__dirname, '..');
-const MANAGED_IMAGES_DIR = path.join(ROOT_DIR, 'public', 'managed_images');
-
-// Ensure directories exist
-fs.mkdirSync(MANAGED_IMAGES_DIR, { recursive: true });
 
 function getSupabaseClient() {
     const url = process.env.SUPABASE_URL;
@@ -59,14 +53,39 @@ async function main() {
         process.exit(1);
     }
 
+    // 3. Get Supabase client
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        process.exit(1);
+    }
+
+    // 4. Upload image to Supabase Storage
     const imageName = path.basename(imagePath);
-    const targetImagePath = path.join(MANAGED_IMAGES_DIR, imageName);
+    const fileBuffer = fs.readFileSync(imagePath);
+    const fileName = `${Date.now()}_${imageName}`;
 
-    // 3. Copy Image
-    console.log(`🖼️  Copying image to: public/managed_images/${imageName}`);
-    fs.copyFileSync(imagePath, targetImagePath);
+    console.log(`🖼️  Uploading image to Supabase Storage: ${fileName}`);
 
-    // 4. Get x_caption from JSON
+    const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(fileName, fileBuffer, {
+            contentType: 'image/png',
+            upsert: false
+        });
+
+    if (uploadError) {
+        console.error(`❌ Upload failed: ${uploadError.message}`);
+        process.exit(1);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(fileName);
+
+    console.log(`✅ Uploaded successfully: ${publicUrl}`);
+
+    // 5. Get x_caption from JSON
     const caption = jsonContent.x_caption || '';
     if (!caption) {
         console.error('❌ No x_caption found in JSON file');
@@ -75,15 +94,9 @@ async function main() {
 
     console.log(`📝 Using x_caption: "${caption}"`);
 
-    // 5. Save directly to Supabase
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-        process.exit(1);
-    }
-
-    const mediaPath = `/managed_images/${imageName}`;
+    // 6. Save draft to Supabase
     const formattedMedia = [{
-        url: mediaPath,
+        url: publicUrl,
         type: 'image' as const
     }];
 
@@ -111,7 +124,7 @@ async function main() {
     console.log('\n✅ Import completed successfully!');
     console.log('='.repeat(50));
     console.log(`📝 Post text: ${caption}`);
-    console.log(`🖼️  Image: ${mediaPath}`);
+    console.log(`🖼️  Image: ${publicUrl}`);
     console.log('='.repeat(50));
 }
 

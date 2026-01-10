@@ -692,7 +692,7 @@ export default function Home() {
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 mb-2">
               {mediaPreviews.map((media, index) => (
-                <div key={index} className="relative w-24 h-24 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group">
+                <div key={index} className="relative w-32 h-32 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group">
                   {media.type === 'image' ? (
                     <img src={media.url} alt="preview" className="w-full h-full object-cover" />
                   ) : (
@@ -710,7 +710,7 @@ export default function Home() {
               {mediaPreviews.length < 4 && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-24 h-24 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                  className="w-32 h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
                 >
                   <span className="text-2xl">+</span>
                 </button>

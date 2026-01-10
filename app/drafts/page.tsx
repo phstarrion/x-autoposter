@@ -217,7 +217,7 @@ export default function DraftsPage() {
                                     {draft.media && draft.media.length > 0 && (
                                         <div className="flex gap-2 mt-3">
                                             {draft.media.map((m, i) => (
-                                                <div key={i} className="w-24 h-24 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                                                <div key={i} className="w-32 h-32 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
                                                     {m.type === 'image' ? (
                                                         <img src={m.url} alt="" className="w-full h-full object-cover text-xs text-slate-400" />
                                                     ) : (
@@ -303,7 +303,7 @@ export default function DraftsPage() {
                                 {schedulingDraft.media && schedulingDraft.media.length > 0 && (
                                     <div className="flex gap-2 mt-3">
                                         {schedulingDraft.media.map((m, i) => (
-                                            <div key={i} className="w-24 h-24 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                                            <div key={i} className="w-32 h-32 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
                                                 {m.type === 'image' ? (
                                                     <img src={m.url} alt="" className="w-full h-full object-cover" />
                                                 ) : (

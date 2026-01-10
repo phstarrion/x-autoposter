@@ -21,7 +21,51 @@ export default function DraftsPage() {
     const [scheduledAt, setScheduledAt] = useState("");
     const [scheduleLoading, setScheduleLoading] = useState(false);
 
-    // ... (fetchDrafts, DELETE, etc.) 
+    const fetchDrafts = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/drafts", {
+                cache: "no-store",
+            });
+            const data: ApiResponse = await res.json();
+
+            if (res.ok && data.drafts) {
+                setDrafts(data.drafts);
+            } else {
+                setError(data.error || "下書きの取得に失敗しました");
+            }
+        } catch {
+            setError("通信エラーが発生しました");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchDrafts();
+    }, [fetchDrafts]);
+
+    // Delete draft
+    const handleDelete = useCallback(async (id: string) => {
+        if (!confirm("この下書きを削除しますか？")) return;
+
+        try {
+            const res = await fetch("/api/drafts", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id }),
+            });
+
+            if (res.ok) {
+                setDrafts((prev) => prev.filter((d) => d.id !== id));
+            } else {
+                alert("削除に失敗しました");
+            }
+        } catch {
+            alert("削除に失敗しました");
+        }
+    }, []);
 
     // Open schedule modal
     const handleOpenScheduleModal = useCallback((draft: Draft) => {
@@ -77,7 +121,7 @@ export default function DraftsPage() {
         } finally {
             setScheduleLoading(false);
         }
-    }, [schedulingDraft, scheduledAt, handleCloseScheduleModal]);
+    }, [schedulingDraft, scheduledAt, schedulingText, handleCloseScheduleModal]);
 
     // Format date
     const formatDate = (dateString: string) => {

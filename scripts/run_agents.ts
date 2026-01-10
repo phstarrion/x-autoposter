@@ -131,11 +131,19 @@ function saveFinalText(text: string): string {
     return filepath;
 }
 
+// Extract media paths from input content
+function extractMediaFromInput(content: string): string[] {
+    const mediaRegex = /\/managed_images\/[^\s]+\.(png|jpg|jpeg|gif|webp)/gi;
+    const matches = content.match(mediaRegex);
+    return matches || [];
+}
+
 // Save draft to Supabase
 async function saveDraftToSupabase(
     logger: Logger,
     finalText: string,
-    checkerResult: object
+    checkerResult: object,
+    media: string[] = []
 ): Promise<boolean> {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -144,10 +152,17 @@ async function saveDraftToSupabase(
     }
 
     try {
+        // Format media for DB (Draft type expects { url: string, type: 'image' | 'video' }[])
+        const formattedMedia = media.map(path => ({
+            url: path,
+            type: 'image' as const // Assume image for now
+        }));
+
         const { error } = await supabase.from('drafts').insert({
             text: finalText,
             source: 'agents',
             meta: checkerResult,
+            media: formattedMedia,
         });
 
         if (error) {
@@ -247,7 +262,10 @@ async function main() {
             logger.info(`Final text saved: ${finalPath}`);
 
             // 7. Save draft to Supabase
-            await saveDraftToSupabase(logger, checkerResult.final_text, checkerResult);
+            // Extract media from input content
+            const mediaFromInput = extractMediaFromInput(inputContent);
+            const media = mediaFromInput.length > 0 ? mediaFromInput : ((checkerResult as any).media || (writerResult as any).media || []);
+            await saveDraftToSupabase(logger, checkerResult.final_text, checkerResult, media);
 
             console.log('\n' + '='.repeat(50));
             console.log('📝 FINAL OUTPUT:');

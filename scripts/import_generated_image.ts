@@ -2,20 +2,37 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import * as dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
+
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Import Generated Image Script
  * Usage: npm run import-image <path_to_json_file>
+ * 
+ * Directly saves x_caption from JSON as post text with image attachment.
  */
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const INPUTS_DIR = path.join(ROOT_DIR, 'inputs');
 const MANAGED_IMAGES_DIR = path.join(ROOT_DIR, 'public', 'managed_images');
 
 // Ensure directories exist
-fs.mkdirSync(INPUTS_DIR, { recursive: true });
 fs.mkdirSync(MANAGED_IMAGES_DIR, { recursive: true });
+
+function getSupabaseClient() {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+        console.error('❌ Supabase credentials not found in .env.local');
+        return null;
+    }
+
+    return createClient(url, key);
+}
 
 async function main() {
     // 1. Parse arguments
@@ -32,7 +49,7 @@ async function main() {
     }
 
     // 2. Read JSON and find companion PNG
-    console.log(`Reading metadata from: ${path.basename(absoluteJsonPath)}`);
+    console.log(`📖 Reading metadata from: ${path.basename(absoluteJsonPath)}`);
     const jsonContent = JSON.parse(fs.readFileSync(absoluteJsonPath, 'utf-8'));
 
     // Assume PNG has same basename
@@ -46,44 +63,56 @@ async function main() {
     const targetImagePath = path.join(MANAGED_IMAGES_DIR, imageName);
 
     // 3. Copy Image
-    console.log(`Copying image to: public/managed_images/${imageName}`);
+    console.log(`🖼️  Copying image to: public/managed_images/${imageName}`);
     fs.copyFileSync(imagePath, targetImagePath);
 
-    // 4. Create Input File
-    const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
-    const inputFilename = `import_${timestamp}.md`;
-    const inputPath = path.join(INPUTS_DIR, inputFilename);
-
-    const prompt = jsonContent.prompt || '';
-    const caption = jsonContent.x_caption || 'No caption provided';
-    const constraints = jsonContent.negative_constraints ? `\nConstraints: ${jsonContent.negative_constraints}` : '';
-
-    const markdownContent = `# ${caption}
-
-## Context
-This is an AI generated image.
-Prompt used: ${prompt}
-${constraints}
-
-## Image
-/managed_images/${imageName}
-
-## Goal
-Create an engaging social media post based on this image and context.
-`;
-
-    fs.writeFileSync(inputPath, markdownContent, 'utf-8');
-    console.log(`Created input file: inputs/${inputFilename}`);
-
-    // 5. Run Agents
-    console.log('\n🚀 Running Agent Pipeline...');
-    try {
-        execSync('npm run agents', { stdio: 'inherit', cwd: ROOT_DIR });
-        console.log('\n✅ Import and generation completed successfully!');
-    } catch (error) {
-        console.error('\n❌ Agent execution failed.');
+    // 4. Get x_caption from JSON
+    const caption = jsonContent.x_caption || '';
+    if (!caption) {
+        console.error('❌ No x_caption found in JSON file');
         process.exit(1);
     }
+
+    console.log(`📝 Using x_caption: "${caption}"`);
+
+    // 5. Save directly to Supabase
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        process.exit(1);
+    }
+
+    const mediaPath = `/managed_images/${imageName}`;
+    const formattedMedia = [{
+        url: mediaPath,
+        type: 'image' as const
+    }];
+
+    const meta = {
+        theme_id: jsonContent.theme_id || path.basename(absoluteJsonPath, '.json'),
+        prompt: jsonContent.prompt || '',
+        ready_to_post: true,
+        char_count: caption.length
+    };
+
+    console.log('💾 Saving draft to Supabase...');
+
+    const { error } = await supabase.from('drafts').insert({
+        text: caption,
+        source: 'agents',
+        meta: meta,
+        media: formattedMedia,
+    });
+
+    if (error) {
+        console.error(`❌ Failed to save draft: ${error.message}`);
+        process.exit(1);
+    }
+
+    console.log('\n✅ Import completed successfully!');
+    console.log('='.repeat(50));
+    console.log(`📝 Post text: ${caption}`);
+    console.log(`🖼️  Image: ${mediaPath}`);
+    console.log('='.repeat(50));
 }
 
 main().catch(console.error);

@@ -193,6 +193,52 @@ function HistoryPostItem({
   );
 }
 
+// Conversion lever: nudges engaged free users toward a paid plan.
+function UpgradeBanner() {
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return localStorage.getItem("upgrade_banner_dismissed") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem("upgrade_banner_dismissed", "1");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="w-full max-w-lg mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl shadow-lg p-4 flex items-center gap-3 animate-slide-up">
+      <span className="text-2xl">🚀</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm sm:text-base">無制限の予約投稿 & AI生成を解放</p>
+        <p className="text-indigo-100 text-xs sm:text-sm">Pro は月 ¥1,980。いつでも解約OK。</p>
+      </div>
+      <Link
+        href="/pricing"
+        className="shrink-0 bg-white text-indigo-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors"
+      >
+        アップグレード
+      </Link>
+      <button
+        onClick={dismiss}
+        aria-label="閉じる"
+        className="shrink-0 text-indigo-200 hover:text-white transition-colors"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
   const [text, setText] = useState("");
   const [scheduledAt, setScheduledAt] = useState(() => getNextSlot());
@@ -621,6 +667,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen min-h-dvh flex flex-col items-center px-4 py-6 sm:py-8 bg-slate-100 text-slate-900">
+      <UpgradeBanner />
       {/* Main Card */}
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 animate-slide-up">
         {/* Header */}

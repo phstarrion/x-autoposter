@@ -631,12 +631,26 @@ export default function Home() {
               <span>Autoposter</span>
               <span className="text-slate-400 text-xs sm:text-sm font-normal ml-1">v0.4</span>
             </h1>
-            <Link
-              href="/drafts"
-              className="text-slate-300 hover:text-white text-sm flex items-center gap-1 transition-colors"
-            >
-              📝 下書き
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/pricing"
+                className="text-slate-300 hover:text-white text-sm flex items-center gap-1 transition-colors"
+              >
+                💳 料金
+              </Link>
+              <Link
+                href="/dashboard"
+                className="text-slate-300 hover:text-white text-sm flex items-center gap-1 transition-colors"
+              >
+                📊 KPI
+              </Link>
+              <Link
+                href="/drafts"
+                className="text-slate-300 hover:text-white text-sm flex items-center gap-1 transition-colors"
+              >
+                📝 下書き
+              </Link>
+            </div>
           </div>
         </div>
 

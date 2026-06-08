@@ -21,14 +21,19 @@ export default function PricingPage() {
             }
             setLoading("free");
             try {
+                const ref =
+                    typeof window !== "undefined"
+                        ? new URLSearchParams(window.location.search).get("ref") ?? undefined
+                        : undefined;
                 const res = await fetch("/api/signup", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email }),
+                    body: JSON.stringify({ email, ref }),
                 });
                 const data = await res.json();
                 if (data.success) {
-                    window.location.href = "/dashboard?signup=success";
+                    const code = data.referralCode ? `&code=${data.referralCode}` : "";
+                    window.location.href = `/dashboard?signup=success${code}`;
                 } else {
                     setError(data.error || "登録に失敗しました");
                 }

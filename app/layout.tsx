@@ -13,13 +13,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "X Autoposter",
-  description: "X (Twitter) 自動投稿・予約投稿ツール",
+  title: "X Autoposter — AIで投稿を自動化",
+  description: "X (Twitter) 自動投稿・予約投稿ツール。AIエージェントが投稿文を生成。",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "X Autoposter",
+  },
+  openGraph: {
+    title: "X Autoposter — AIで投稿を自動化",
+    description: "予約投稿とAI投稿生成で、Xの運用を自動化しよう。",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "X Autoposter — AIで投稿を自動化",
+    description: "予約投稿とAI投稿生成で、Xの運用を自動化しよう。",
   },
 };
 

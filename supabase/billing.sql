@@ -10,11 +10,19 @@ create table if not exists app_users (
   email text not null unique,
   stripe_customer_id text unique,
   plan text not null default 'free' check (plan in ('free', 'pro', 'business')),
+  referral_code text unique,
+  referred_by text,
   created_at timestamp with time zone not null default timezone('utc'::text, now())
 );
 
+-- Idempotent columns for existing deployments
+alter table app_users add column if not exists referral_code text;
+alter table app_users add column if not exists referred_by text;
+
 create index if not exists app_users_created_at_idx on app_users (created_at desc);
 create index if not exists app_users_stripe_customer_idx on app_users (stripe_customer_id);
+create index if not exists app_users_referral_code_idx on app_users (referral_code);
+create index if not exists app_users_referred_by_idx on app_users (referred_by);
 
 -- ---------------------------------------------------------------------------
 -- Subscriptions: current Stripe subscription state per user

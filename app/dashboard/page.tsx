@@ -45,6 +45,67 @@ function ProgressCard({
     );
 }
 
+function InviteCard() {
+    const [code] = useState<string | null>(() => {
+        if (typeof window === "undefined") return null;
+        const fromUrl = new URLSearchParams(window.location.search).get("code");
+        if (fromUrl) return fromUrl;
+        try {
+            return localStorage.getItem("referral_code");
+        } catch {
+            return null;
+        }
+    });
+    const [copied, setCopied] = useState(false);
+
+    // Persist the code so the invite link survives page reloads.
+    useEffect(() => {
+        if (code) {
+            try {
+                localStorage.setItem("referral_code", code);
+            } catch {
+                /* ignore */
+            }
+        }
+    }, [code]);
+
+    if (!code) return null;
+
+    const link = `${window.location.origin}/pricing?ref=${code}`;
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(link);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            /* ignore */
+        }
+    };
+
+    return (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 mb-6">
+            <h3 className="font-bold text-indigo-900 mb-1">🎁 友だちを招待して100人へ</h3>
+            <p className="text-sm text-indigo-700/80 mb-3">
+                このリンクから登録された人は「紹介経由の登録」に計上されます。
+            </p>
+            <div className="flex gap-2">
+                <input
+                    readOnly
+                    value={link}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="flex-1 p-2.5 text-sm bg-white border border-indigo-200 rounded-lg font-mono text-slate-700"
+                />
+                <button
+                    onClick={copy}
+                    className="px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors shrink-0"
+                >
+                    {copied ? "コピー済み" : "コピー"}
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function DashboardPage() {
     const [metrics, setMetrics] = useState<Metrics | null>(null);
     const [loading, setLoading] = useState(true);
@@ -134,10 +195,12 @@ export default function DashboardPage() {
                                 <p className="text-xl font-bold mt-1">{num(metrics.payingUsers)}</p>
                             </div>
                             <div className="bg-white rounded-xl border border-slate-200 p-4">
-                                <p className="text-xs text-slate-400 uppercase tracking-wider">データソース</p>
-                                <p className="text-xl font-bold mt-1 capitalize">{metrics.source}</p>
+                                <p className="text-xs text-slate-400 uppercase tracking-wider">紹介経由の登録</p>
+                                <p className="text-xl font-bold mt-1">{num(metrics.referredUsers)}</p>
                             </div>
                         </div>
+
+                        <InviteCard />
 
                         {metrics.revenueGoalMet && metrics.usersGoalMet ? (
                             <div className="bg-green-50 border border-green-200 text-green-800 rounded-2xl p-6 text-center">

@@ -7,6 +7,7 @@ export type Metrics = {
     totalRevenueJpy: number;
     users: number;
     payingUsers: number;
+    referredUsers: number;
     goals: typeof GOALS;
     revenueGoalMet: boolean;
     usersGoalMet: boolean;
@@ -23,7 +24,7 @@ export type Metrics = {
 export async function GET() {
     // Mock Mode: deterministic sample so the dashboard renders without keys.
     if (process.env.MOCK_MODE === "true") {
-        return NextResponse.json(buildMetrics(720_000, 1_240_000, 63, 41, "mock"));
+        return NextResponse.json(buildMetrics(720_000, 1_240_000, 63, 41, 28, "mock"));
     }
 
     const startOfMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
@@ -49,9 +50,9 @@ export async function GET() {
                 params.starting_after = charges.data[charges.data.length - 1]?.id;
             }
 
-            const { users, payingUsers } = await countUsers();
+            const { users, payingUsers, referredUsers } = await countUsers();
             return NextResponse.json(
-                buildMetrics(firstMonthRevenue, totalRevenue, users, payingUsers, "stripe")
+                buildMetrics(firstMonthRevenue, totalRevenue, users, payingUsers, referredUsers, "stripe")
             );
         } catch (err) {
             console.error("Stripe metrics error, falling back to DB:", err);
@@ -65,13 +66,14 @@ export async function GET() {
                 .from("revenue_summary")
                 .select("*")
                 .maybeSingle();
-            const { users, payingUsers } = await countUsers();
+            const { users, payingUsers, referredUsers } = await countUsers();
             return NextResponse.json(
                 buildMetrics(
                     summary?.current_month_revenue_jpy ?? 0,
                     summary?.total_revenue_jpy ?? 0,
                     users,
                     payingUsers,
+                    referredUsers,
                     "supabase"
                 )
             );
@@ -80,11 +82,11 @@ export async function GET() {
         }
     }
 
-    return NextResponse.json(buildMetrics(0, 0, 0, 0, "supabase"));
+    return NextResponse.json(buildMetrics(0, 0, 0, 0, 0, "supabase"));
 }
 
-async function countUsers(): Promise<{ users: number; payingUsers: number }> {
-    if (!supabase) return { users: 0, payingUsers: 0 };
+async function countUsers(): Promise<{ users: number; payingUsers: number; referredUsers: number }> {
+    if (!supabase) return { users: 0, payingUsers: 0, referredUsers: 0 };
     const { count: users } = await supabase
         .from("app_users")
         .select("*", { count: "exact", head: true });
@@ -92,7 +94,11 @@ async function countUsers(): Promise<{ users: number; payingUsers: number }> {
         .from("app_users")
         .select("*", { count: "exact", head: true })
         .neq("plan", "free");
-    return { users: users ?? 0, payingUsers: payingUsers ?? 0 };
+    const { count: referredUsers } = await supabase
+        .from("app_users")
+        .select("*", { count: "exact", head: true })
+        .not("referred_by", "is", null);
+    return { users: users ?? 0, payingUsers: payingUsers ?? 0, referredUsers: referredUsers ?? 0 };
 }
 
 function buildMetrics(
@@ -100,6 +106,7 @@ function buildMetrics(
     totalRevenueJpy: number,
     users: number,
     payingUsers: number,
+    referredUsers: number,
     source: Metrics["source"]
 ): Metrics {
     return {
@@ -107,6 +114,7 @@ function buildMetrics(
         totalRevenueJpy,
         users,
         payingUsers,
+        referredUsers,
         goals: GOALS,
         revenueGoalMet: firstMonthRevenueJpy >= GOALS.firstMonthRevenueJpy,
         usersGoalMet: users >= GOALS.users,
